@@ -15,7 +15,6 @@ import com.division.fearforall.regions.Region;
 import com.division.fearforall.regions.Selection;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
-import com.massivecraft.factions.struct.Rel;
 import com.massivecraft.factions.struct.Relation;
 import java.text.DecimalFormat;
 import java.util.ArrayList;

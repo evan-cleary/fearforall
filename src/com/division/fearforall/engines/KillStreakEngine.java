@@ -13,8 +13,6 @@ import com.division.fearforall.events.PlayerKilledPlayerInArenaEvent;
 import com.division.fearforall.events.PlayerKillstreakAwardedEvent;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
-import com.massivecraft.factions.Factions;
-import com.massivecraft.factions.struct.Rel;
 import com.massivecraft.factions.struct.Relation;
 import java.util.ArrayList;
 import org.bukkit.Bukkit;
