@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import net.milkbowl.vault.economy.Economy;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
@@ -107,7 +108,7 @@ public class FearForAll extends JavaPlugin {
             getServer().getPluginManager().disablePlugin(this);
         }
         if (this.getDescription().getVersion().contains("EB")) {
-            getServer().getLogger().warning("[FearForAll] YOU ARE USING AN EXPERIMENTAL BUILD. USE AT YOUR OWN RISK.");
+            Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "[FearForAll] YOU ARE USING AN EXPERIMENTAL BUILD. USE AT YOUR OWN RISK.");
         }
     }
 
@@ -192,11 +193,20 @@ public class FearForAll extends JavaPlugin {
                         if (args[0].equalsIgnoreCase("version")) {
                             sender.sendMessage(ChatColor.YELLOW + "Name: " + ChatColor.RED + this.getDescription().getName());
                             sender.sendMessage(ChatColor.YELLOW + "Description: " + ChatColor.RED + this.getDescription().getDescription());
-                            sender.sendMessage(ChatColor.YELLOW + "Version: " + ChatColor.RED + this.getDescription().getVersion());
+                            if (this.getDescription().getVersion().contains("EB")) {
+                                sender.sendMessage(ChatColor.YELLOW + "Version: " + ChatColor.RED + this.getDescription().getVersion() + ChatColor.YELLOW + " (" + ChatColor.DARK_RED + "Experimental" + ChatColor.YELLOW + ")");
+                            } else {
+                                sender.sendMessage(ChatColor.YELLOW + "Version: " + ChatColor.RED + this.getDescription().getVersion());
+                            }
                             sender.sendMessage(ChatColor.YELLOW + "Author: " + ChatColor.RED + this.getDescription().getAuthors().get(0));
                             sender.sendMessage(ChatColor.YELLOW + "Engines: ");
                             for (String engine : engineManager.getEngines()) {
-                                sender.sendMessage("   " + ChatColor.RED + engine + ChatColor.YELLOW + " - Version: " + ChatColor.RED + engineManager.getEngineVersion(engine) + ChatColor.YELLOW + " - Author: " + ChatColor.RED + engineManager.getEngineAuthor(engine));
+                                String msg = "   " + ChatColor.RED + engine + ChatColor.YELLOW + " - Version: " + ChatColor.RED + engineManager.getEngineVersion(engine) + ChatColor.YELLOW + " - Author: " + ChatColor.RED + engineManager.getEngineAuthor(engine);
+                                if (engineManager.getEngineVersion(engine).contains("EB")) {
+                                    msg += ChatColor.YELLOW + " (" + ChatColor.DARK_RED + "Exp" + ChatColor.YELLOW + ")";
+                                }
+                                sender.sendMessage(msg);
+
                             }
                             return true;
                         }

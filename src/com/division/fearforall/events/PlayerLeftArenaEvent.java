@@ -5,7 +5,6 @@
 package com.division.fearforall.events;
 
 import static com.division.common.utils.LocationTools.toVector;
-import com.division.fearforall.events.PlayerMovedInArenaEvent.MoveMethod;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;

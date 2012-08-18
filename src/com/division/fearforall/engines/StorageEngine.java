@@ -10,21 +10,14 @@ import com.division.fearforall.core.PlayerStorage;
 import com.division.fearforall.crypto.SHA1;
 import com.division.fearforall.events.PlayerDamageInArenaEvent;
 import com.division.fearforall.events.PlayerEnteredArenaEvent;
-import com.division.fearforall.events.PlayerMovedInArenaEvent;
-import com.division.fearforall.events.PlayerMovedInArenaEvent.MoveMethod;
 import com.division.fearforall.events.PlayerQuitInArenaEvent;
 import com.massivecraft.factions.struct.Relation;
 import java.util.ArrayList;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerRespawnEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffectType;
 
@@ -34,7 +27,7 @@ import org.bukkit.potion.PotionEffectType;
  *
  */
 @EngineInfo(author = "mastershake71",
-version = "0.2.2DE",
+version = "0.2.3EB",
 depends = {"OfflineStorage"})
 public class StorageEngine extends Engine {
 
@@ -45,7 +38,7 @@ public class StorageEngine extends Engine {
         return ("Storage");
     }
     private static ArrayList<PlayerStorage> massStorage = new ArrayList<PlayerStorage>();
-    public ArrayList<Player> playersInArena = new ArrayList<Player>();
+    //public ArrayList<Player> playersInArena = new ArrayList<Player>();
     private OfflineStorageEngine OSE = null;
 
     public StorageEngine() {
@@ -97,53 +90,23 @@ public class StorageEngine extends Engine {
             if (!OSE.hasOfflineStorage(pStorage.getKey())) {
                 OSE.covertPlayerStorage(pStorage);
             }
-            playersInArena.remove(evtPlayer);
+            //playersInArena.remove(evtPlayer);
         }
-    }
-
-    @EventHandler(priority = EventPriority.NORMAL)
-    public void onPlayerMovedInArena(PlayerMovedInArenaEvent evt) {
-        Player evtPlayer = evt.getPlayer();
-        if (evtPlayer.isDead() || hasStorage(evtPlayer)) {
-            return;
-        }
-        PlayerEnteredArenaEvent event = new PlayerEnteredArenaEvent(evtPlayer, evt.getFrom(), evt.getTo(), evt.getMethod());
-        FearForAll.getInstance().getServer().getPluginManager().callEvent(event);
-        if (event.isCancelled()) {
-            evt.setCancelled(true);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onPlayerMoveInArena(PlayerMovedInArenaEvent evt) {
-        if (!evt.isCancelled()) {
-            return;
-        }
-        if (evt.getMethod() == MoveMethod.TELEPORTED) {
-            PlayerTeleportEvent event = (PlayerTeleportEvent) evt.getEvent();
-            event.setCancelled(true);
-        } else if (evt.getMethod() == MoveMethod.MOVED) {
-            PlayerMoveEvent event = (PlayerMoveEvent) evt.getEvent();
-            event.setCancelled(true);
-        } else if (evt.getMethod() == MoveMethod.RESPAWNED) {
-            PlayerRespawnEvent event = (PlayerRespawnEvent) evt.getEvent();
-            event.setRespawnLocation(evt.getPlayer().getWorld().getSpawnLocation());
-        } else if (evt.getMethod() == MoveMethod.JOINED) {
-            PlayerJoinEvent event = (PlayerJoinEvent) evt.getEvent();
-            event.getPlayer().teleport(evt.getPlayer().getWorld().getSpawnLocation());
-        }
-
     }
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void onPlayerEnteredArena(PlayerEnteredArenaEvent evt) {
-        if (checkAllowed(evt.getPlayer())) {
+        // if (checkAllowed(evt.getPlayer())) {
+        if (!hasStorage(evt.getPlayer())) {
             addStorage(evt.getPlayer());
-            playersInArena.add(evt.getPlayer());
         } else {
-            evt.getPlayer().sendMessage(ChatColor.YELLOW + "[FearForAll] " + ChatColor.RED + "There are already 2 instances of your ip in the arena.");
             evt.setCancelled(true);
         }
+        //  playersInArena.add(evt.getPlayer());
+        //  } else {
+        //     evt.getPlayer().sendMessage(ChatColor.YELLOW + "[FearForAll] " + ChatColor.RED + "There are already 2 instances of your ip in the arena.");
+        //      evt.setCancelled(true);
+        //  }
     }
 
     public void addStorage(Player key) {
@@ -197,31 +160,30 @@ public class StorageEngine extends Engine {
         }
     }
 
-    public boolean checkAllowed(Player p) {
-        if (playersInArena.isEmpty()) {
-            return true;
-        }
-
-        int ipCount = 0;
-        String addr = p.getAddress().getHostName();
-        Player[] players = playersInArena.toArray(new Player[0]);
-        for (Player player : players) {
-            if (player == p) {
-                continue;
-            }
-            String addr2 = player.getAddress().getHostName();
-            if (addr.equals(addr2)) {
-                ipCount++;
-                continue;
-            }
-        }
-        if (ipCount >= 2) {
-            return false;
-        } else {
-            return true;
-        }
-    }
-
+//    public boolean checkAllowed(Player p) {
+//        if (playersInArena.isEmpty()) {
+//            return true;
+//        }
+//
+//        int ipCount = 0;
+//        String addr = p.getAddress().getHostName();
+//        Player[] players = playersInArena.toArray(new Player[0]);
+//        for (Player player : players) {
+//            if (player == p) {
+//                continue;
+//            }
+//            String addr2 = player.getAddress().getHostName();
+//            if (addr.equals(addr2)) {
+//                ipCount++;
+//                continue;
+//            }
+//        }
+//        if (ipCount >= 2) {
+//            return false;
+//        } else {
+//            return true;
+//        }
+//    }
     public boolean hasOfflineStorage(String key) {
         return OSE.hasOfflineStorage(key);
     }

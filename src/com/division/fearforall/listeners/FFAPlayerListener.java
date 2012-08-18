@@ -7,7 +7,7 @@ package com.division.fearforall.listeners;
 import static com.division.common.utils.LocationTools.toVector;
 import com.division.fearforall.core.FearForAll;
 import com.division.fearforall.events.PlayerDeathInArenaEvent.DeathCause;
-import com.division.fearforall.events.PlayerMovedInArenaEvent.MoveMethod;
+import com.division.fearforall.events.MoveMethod;
 import com.division.fearforall.events.*;
 import com.division.fearforall.regions.HealRegion;
 import com.division.fearforall.regions.Region;
@@ -94,15 +94,11 @@ public class FFAPlayerListener implements Listener {
                     evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You have left the heal region.");
                 }
             }
-            if (region.contains(world, pt)) {
-                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerMovedInArenaEvent(evtPlayer, evt.getFrom(), evt.getTo(), MoveMethod.MOVED, evt));
-//                enterArena(evtPlayer);
+            if (region.contains(world, pt) && !region.contains(world, pf)) {
+                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerEnteredArenaEvent(evtPlayer, evt.getFrom(), evt.getTo(), MoveMethod.MOVED));
             }
             if (!region.contains(world, pt) && region.contains(world, pf)) {
                 FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerLeftArenaEvent(evtPlayer, evt.getFrom(), evt.getTo(), MoveMethod.MOVED));
-//                if (!invMan.restoreInventory(evtPlayer)) {
-//                    evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Error when retrieving inventory information.");
-//                }
             }
         }
 
@@ -144,59 +140,6 @@ public class FFAPlayerListener implements Listener {
                 FFA.getServer().getPluginManager().callEvent(new PlayerDeathInArenaEvent(p, DeathCause.ENVIRONMENT));
             }
         }
-
-
-        //TODO Change to new Event system keep legacy code for now. 
-
-//        if (evt.getEntity() instanceof Player) {
-//            Location loc =
-//                    evt.getEntity().getLocation();
-//            Vector pt = new Vector(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-//            Region region = FFA.getRegion();
-//            if (region.contains(pt)) {
-//                evt.getDrops().clear();
-//                EntityDamageEvent ede =
-//                        evt.getEntity().getLastDamageCause();
-//                if (ede instanceof EntityDamageByEntityEvent) {
-//                    EntityDamageByEntityEvent edee =
-//                            (EntityDamageByEntityEvent) ede;
-//                    if (edee.getDamager() instanceof Player) {
-//                        Player killer = (Player) edee.getDamager();
-//                        invMan.addKill(killer, evt.getEntity());
-//                        invMan.addReward(killer);
-//                        invMan.rewardKillStreak(killer);
-//                    } else {
-//                        Player p =
-//                                FFA.getServer().getPlayer(invMan.getStorage(evt.getEntity().getName()).getLastHit());
-//                        if (p != null) {
-//                            invMan.addKill(p, evt.getEntity());
-//                            invMan.addReward(p);
-//                            invMan.rewardKillStreak(p);
-//                        } else {
-//                            invMan.addKill(null, evt.getEntity());
-//                        }
-//                    }
-//                } else {
-//                    String lastHit =
-//                            invMan.getStorage(evt.getEntity().getName()).getLastHit();
-//                    Player p =
-//                            null;
-//                    if (!lastHit.equals("")) {
-//                        p =
-//                                FFA.getServer().getPlayer(lastHit);
-//                    }
-//                    if (p != null) {
-//                        invMan.addKill(p, evt.getEntity());
-//                        invMan.addReward(p);
-//                        invMan.rewardKillStreak(p);
-//                    } else {
-//                        invMan.addKill(null,
-//                                evt.getEntity());
-//                    }
-//                }
-//            }
-//        }
-
     }
 
     @EventHandler(priority = EventPriority.LOW)
@@ -220,7 +163,7 @@ public class FFAPlayerListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.LOW)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerRespawn(PlayerRespawnEvent evt) {
         Player evtPlayer = evt.getPlayer();
         World world = evtPlayer.getWorld();
@@ -228,24 +171,10 @@ public class FFAPlayerListener implements Listener {
         Vector rt = new Vector(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
         Region region = FFA.getRegion();
         if (!region.contains(world, rt)) {
-
             FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerLeftArenaEvent(evtPlayer, null, loc, MoveMethod.RESPAWNED));
-
-
-//            if (invMan.hasStorage(evtPlayer)) {
-//                if (!invMan.restoreInventory(evtPlayer)) {  
-//                    evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Error when retrieving inventory information.");
-//                }
-//            }
-//            String key = SHA1.getHash(20, evtPlayer.getName());
-//            if (invMan.hasOfflineStorage(key)) {
-//                invMan.restoreInventory(evtPlayer);
-//            }
         } else {
-            FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerMovedInArenaEvent(evtPlayer, null, loc, MoveMethod.RESPAWNED, evt));
-//            if (!invMan.hasStorage(evtPlayer)) {
-//                enterArena(evtPlayer);
-//            }
+            Bukkit.getServer().broadcastMessage("Got to PEAE: Respawn");
+            FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerEnteredArenaEvent(evtPlayer, null, loc, MoveMethod.RESPAWNED));
         }
     }
 
@@ -261,13 +190,10 @@ public class FFAPlayerListener implements Listener {
             Vector tFrom = new Vector(locFrom.getBlockX(), locFrom.getBlockY(), locFrom.getBlockZ());
             if (!region.contains(world, tTo) && region.contains(world, tFrom)) {
                 FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerLeftArenaEvent(evtPlayer, locFrom, locTo, MoveMethod.TELEPORTED));
-//                if (invMan.hasStorage(evtPlayer)) {
-//                    if (!invMan.restoreInventory(evt.getPlayer())) {
-//                        evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Error when retrieving inventory information.");
-//                    }
-//                }
             } else if (region.contains(world, tTo) && !region.contains(world, tFrom)) {
-                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerMovedInArenaEvent(evtPlayer, locFrom, locTo, MoveMethod.TELEPORTED, evt));
+                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerEnteredArenaEvent(evtPlayer, locFrom, locTo, MoveMethod.TELEPORTED));
+            } else if (region.contains(world, tTo) && locFrom == null){
+                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerEnteredArenaEvent(evtPlayer, locFrom, locTo, MoveMethod.TELEPORTED));
             }
         }
     }
@@ -306,10 +232,6 @@ public class FFAPlayerListener implements Listener {
         Vector pt = new Vector(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
         Region region = FFA.getRegion();
         if (region.contains(world, pt)) {
-//           String key = SHA1.getHash(20, evtPlayer.getName());
-//            if (!invMan.hasOfflineStorage(key)) {
-//                invMan.createOfflineStorage(invMan.getStorage(SHA1.getHash(20, evtPlayer.getName())));
-//            }
             FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerQuitInArenaEvent(evtPlayer));
         }
     }
@@ -322,10 +244,6 @@ public class FFAPlayerListener implements Listener {
         Vector pt = new Vector(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
         Region region = FFA.getRegion();
         if (region.contains(world, pt)) {
-//            String key = SHA1.getHash(20, evtPlayer.getName());
-//            if (!invMan.hasOfflineStorage(key)) {
-//                invMan.createOfflineStorage(invMan.getStorage(SHA1.getHash(20, evtPlayer.getName())));
-//            }
             FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerQuitInArenaEvent(evtPlayer));
         }
     }
@@ -354,17 +272,6 @@ public class FFAPlayerListener implements Listener {
                 } else {
                     FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerDamageInArenaEvent(evtPlayer, null, evt.getCause(), evt));
                 }
-//                if (invMan.hasStorage(evtPlayer)) {
-//                    EntityDamageByEntityEvent edee = null;
-//                    if (evt instanceof EntityDamageByEntityEvent) {
-//                        edee = (EntityDamageByEntityEvent) evt;
-//                        Player attacker = null;
-//                        if (edee.getDamager() instanceof Player) {
-//                            attacker = (Player) edee.getDamager();
-//                            invMan.getStorage(evtPlayer.getName()).setLastHit(attacker.getName());
-//                        }
-//                    }
-//                }
             }
         }
     }
@@ -380,34 +287,11 @@ public class FFAPlayerListener implements Listener {
         Vector pt = new Vector(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
         Region region = FFA.getRegion();
         if (!region.contains(world, pt)) {
-//            String key = SHA1.getHash(20, evtPlayer.getName());
             FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerLeftArenaEvent(evtPlayer, null, evtPlayer.getLocation(), MoveMethod.JOINED));
-//            if (invMan.hasOfflineStorage(key)) {
-//                invMan.restoreInventory(evtPlayer);
-//            }
         }
         if (region.contains(world, pt)) {
-            FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerMovedInArenaEvent(evtPlayer, null, evtPlayer.getLocation(), MoveMethod.JOINED, evt));
+            FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerEnteredArenaEvent(evtPlayer, null, evtPlayer.getLocation(), MoveMethod.JOINED));
         }
     }
 
-    public void enterArena(Player evtPlayer) {
-        if (!evtPlayer.isDead()) {
-//            if (!invMan.hasStorage(evtPlayer)) {
-//                invMan.addStorage(evtPlayer);
-//            }
-//            evtPlayer.getInventory().clear();
-//            invMan.addItems(evtPlayer);
-//            invMan.addArmor(evtPlayer);
-//            evtPlayer.setHealth(20);
-//            evtPlayer.setFoodLevel(20);
-//            evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You have entered the arena. Your inventory has been saved.");
-//            if (FearForAll.getInstance().isUsingLeaderBoards()) {
-//                FFA.getDataInterface().incrementPlayCount(evtPlayer.getName());
-//            }
-//            for (PotionEffect pt : evtPlayer.getActivePotionEffects()) {
-//                evtPlayer.removePotionEffect(pt.getType());
-//            }
-        }
-    }
 }

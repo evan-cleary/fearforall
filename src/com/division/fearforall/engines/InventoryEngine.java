@@ -7,6 +7,7 @@ package com.division.fearforall.engines;
 import com.division.fearforall.core.FearForAll;
 import com.division.fearforall.core.PlayerStorage;
 import com.division.fearforall.crypto.SHA1;
+import com.division.fearforall.events.MoveMethod;
 import com.division.fearforall.events.PlayerEnteredArenaEvent;
 import com.division.fearforall.events.PlayerKillstreakAwardedEvent;
 import com.division.fearforall.events.PlayerLeftArenaEvent;
@@ -24,7 +25,7 @@ import org.bukkit.potion.PotionEffect;
  * @author Evan
  */
 @EngineInfo(author = "mastershake71",
-version = "0.2.2DE",
+version = "0.2.3EB",
 depends = {"OfflineStorage", "Storage"})
 public class InventoryEngine extends Engine {
 
@@ -57,7 +58,7 @@ public class InventoryEngine extends Engine {
     public void onPlayerEnteredArena(PlayerEnteredArenaEvent evt) {
         if (!evt.isCancelled()) {
             Player evtPlayer = evt.getPlayer();
-            if (!evtPlayer.isDead()) {
+            if (!evtPlayer.isDead() || evt.getMethod() == MoveMethod.RESPAWNED) {
                 evtPlayer.getInventory().clear();
                 addItems(evtPlayer);
                 addArmor(evtPlayer);
@@ -74,7 +75,7 @@ public class InventoryEngine extends Engine {
     @EventHandler(priority = EventPriority.NORMAL)
     public void onPlayerLeftArena(PlayerLeftArenaEvent evt) {
         restoreInventory(evt.getPlayer());
-        SE.playersInArena.remove(evt.getPlayer());
+        //SE.playersInArena.remove(evt.getPlayer());
     }
 
     public void addArmor(Player p) {

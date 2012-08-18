@@ -25,7 +25,7 @@ import org.bukkit.inventory.PlayerInventory;
  * @author Evan
  */
 @EngineInfo(author = "mastershake71",
-version = "0.2.2DE")
+version = "0.2.33RB")
 public class OfflineStorageEngine extends Engine {
 
     FearForAll FFA;
