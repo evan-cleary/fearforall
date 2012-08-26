@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
+import org.bukkit.util.Vector;
 
 /**
  *
@@ -16,12 +17,12 @@ public class PlayerEnteredArenaEvent extends Event implements Cancellable {
 
     public static final HandlerList handlers = new HandlerList();
     private Player player;
-    private Location from;
-    private Location to;
+    private Vector from;
+    private Vector to;
     private MoveMethod method;
     private boolean cancelled = false;
 
-    public PlayerEnteredArenaEvent(Player p, Location from, Location to, final MoveMethod method) {
+    public PlayerEnteredArenaEvent(Player p, Vector from, Vector to, final MoveMethod method) {
         this.player = p;
         this.from = from;
         this.to = to;
@@ -31,9 +32,9 @@ public class PlayerEnteredArenaEvent extends Event implements Cancellable {
     @Override
     public String toString() {
         if (!cancelled) {
-            return "PEAE: " + player.getName() + " " + method.toString() + " from " + ChatColor.LIGHT_PURPLE + toVector(from) + ChatColor.WHITE + " to " + ChatColor.LIGHT_PURPLE + toVector(to) + ChatColor.WHITE + " and entered arena";
+            return "PEAE: " + player.getName() + " " + method.toString() + " from " + ChatColor.LIGHT_PURPLE + from + ChatColor.WHITE + " to " + ChatColor.LIGHT_PURPLE + to + ChatColor.WHITE + " and entered arena";
         } else {
-            return "PEAE: Cancelled " + player.getName() + " " + method.toString() + " from " + ChatColor.LIGHT_PURPLE + toVector(from) + ChatColor.WHITE + " to " + ChatColor.LIGHT_PURPLE + toVector(to) + ChatColor.WHITE + " and prevented entering arena";
+            return "PEAE: Cancelled " + player.getName() + " " + method.toString() + " from " + ChatColor.LIGHT_PURPLE + from + ChatColor.WHITE + " to " + ChatColor.LIGHT_PURPLE + to + ChatColor.WHITE + " and prevented entering arena";
 
         }
     }

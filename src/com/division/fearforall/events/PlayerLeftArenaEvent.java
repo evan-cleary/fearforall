@@ -10,6 +10,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
+import org.bukkit.util.Vector;
 
 /**
  *
@@ -19,11 +20,11 @@ public class PlayerLeftArenaEvent extends Event {
 
     private static final HandlerList handlers = new HandlerList();
     private Player player;
-    private Location from;
-    private Location to;
+    private Vector from;
+    private Vector to;
     private MoveMethod method;
 
-    public PlayerLeftArenaEvent(final Player p, final Location from, final Location to, final MoveMethod method) {
+    public PlayerLeftArenaEvent(final Player p, final Vector from, final Vector to, final MoveMethod method) {
         this.player = p;
         this.from = from;
         this.to = to;
@@ -32,7 +33,7 @@ public class PlayerLeftArenaEvent extends Event {
 
     @Override
     public String toString() {
-        return "PLAE: " + player.getName() + " " + method.toString() + " from " + ChatColor.LIGHT_PURPLE + toVector(from) + ChatColor.WHITE + " to " + ChatColor.LIGHT_PURPLE + toVector(to) + ChatColor.WHITE + " and left arena";
+        return "PLAE: " + player.getName() + " " + method.toString() + " from " + ChatColor.LIGHT_PURPLE + from + ChatColor.WHITE + " to " + ChatColor.LIGHT_PURPLE + to + ChatColor.WHITE + " and left arena";
     }
 
     public Player getPlayer() {

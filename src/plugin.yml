@@ -1,6 +1,6 @@
 name: FearForAll
 main: com.division.fearforall.core.FearForAll
-version: 1.3.35EB
+version: 1.3.37EB
 description: FearForAll region system
 commands:
    ffa:
