@@ -4,9 +4,7 @@
  */
 package com.division.fearforall.events;
 
-import static com.division.common.utils.LocationTools.toVector;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;

@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.division.fearforall.mysql;
 
 import com.division.fearforall.config.FFAConfig;

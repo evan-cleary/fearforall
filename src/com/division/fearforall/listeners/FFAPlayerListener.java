@@ -1,22 +1,18 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.division.fearforall.listeners;
 
 import static com.division.common.utils.LocationTools.toVector;
 import com.division.fearforall.core.FearForAll;
-import com.division.fearforall.events.PlayerDeathInArenaEvent.DeathCause;
-import com.division.fearforall.events.MoveMethod;
 import com.division.fearforall.events.*;
+import com.division.fearforall.events.PlayerDeathInArenaEvent.DeathCause;
 import com.division.fearforall.regions.HealRegion;
 import com.division.fearforall.regions.Region;
 import com.division.fearforall.regions.Selection;
-import org.bukkit.*;
+import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -25,7 +21,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
@@ -46,6 +41,9 @@ public class FFAPlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerInteract(PlayerInteractEvent evt) {
+        if (evt.getPlayer().getItemInHand().getTypeId() != 289) {
+            return;
+        }
         if (evt.getPlayer().hasPermission("fearforall.selection")) {
             if (evt.hasBlock()) {
                 Block evtBlock = evt.getClickedBlock();
@@ -71,18 +69,17 @@ public class FFAPlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerMoveEvent(PlayerMoveEvent evt) {
-        Location from = evt.getFrom();
-        Location to = evt.getTo();
         if (evt.isCancelled()) {
             return;
         }
-        Player evtPlayer = evt.getPlayer();
+        Location from = evt.getFrom();
+        Location to = evt.getTo();
         if (from.getBlockX() == to.getBlockX() && from.getBlockY() == to.getBlockY() && from.getBlockZ() == to.getBlockZ()) {
             return;
         }
-        if (FFA.hasActiveTimer(evtPlayer)) {
-            FFA.getServer().getScheduler().cancelTask(FFA.getActiveTimer(evtPlayer));
-            FFA.removeTimer(evtPlayer);
+        Player evtPlayer = evt.getPlayer();
+        if (FFA.isInTeleportQueue(evtPlayer)) {
+            FFA.removePlayerFromTeleportQueue(evtPlayer);
             evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Teleport has been cancelled.");
             return;
         }
@@ -91,12 +88,14 @@ public class FFAPlayerListener implements Listener {
         Vector pt = toVector(to);
         Vector pf = toVector(from);
         World world = evtPlayer.getWorld();
-        if (healRegion != null) {
-            if (healRegion.contains(world, pt) && !healRegion.contains(world, pf)) {
-                evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You have entered the heal region.");
-            }
-            if (!healRegion.contains(world, pt) && healRegion.contains(world, pf)) {
-                evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You have left the heal region.");
+        if (region.contains(world, pt)) {
+            if (healRegion != null) {
+                if (healRegion.contains(world, pt) && !healRegion.contains(world, pf)) {
+                    evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You have entered the heal region.");
+                }
+                if (!healRegion.contains(world, pt) && healRegion.contains(world, pf)) {
+                    evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You have left the heal region.");
+                }
             }
         }
         if (region.contains(world, pt) && !region.contains(world, pf)) {
@@ -108,18 +107,15 @@ public class FFAPlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerCommandPreProcess(PlayerCommandPreprocessEvent evt) {
-        Location loc = evt.getPlayer().getLocation();
-        World world = evt.getPlayer().getWorld();
-        Vector pt = toVector(loc);
-        Region region = FFA.getRegion();
-        if (evt.getPlayer().hasPermission("fearforall.bypass")) {
+        if (evt.getPlayer().hasPermission("fearforall.bypass") || evt.getMessage().subSequence(1, 4).equals("ffa")) {
             return;
         }
+        World world = evt.getPlayer().getWorld();
+        Vector pt = toVector(evt.getPlayer().getLocation());
+        Region region = FFA.getRegion();
         if (region.contains(world, pt)) {
-            if (!evt.getMessage().contains("ffa")) {
-                evt.setCancelled(true);
-                evt.getPlayer().sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You cannot use commands in the arena.");
-            }
+            evt.setCancelled(true);
+            evt.getPlayer().sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You cannot use commands in the arena.");
         }
     }
 
@@ -127,8 +123,7 @@ public class FFAPlayerListener implements Listener {
     public void onPlayerDeath(PlayerDeathEvent evt) {
         Player p = evt.getEntity();
         World world = p.getWorld();
-        Location loc = evt.getEntity().getLocation();
-        Vector pt = toVector(loc);
+        Vector pt = toVector(p.getLocation());
         Region region = FFA.getRegion();
         if (region.contains(world, pt)) {
             evt.getDrops().clear();
@@ -148,13 +143,12 @@ public class FFAPlayerListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOW)
     public void onPlayerDrop(PlayerDropItemEvent evt) {
-        Location loc = evt.getPlayer().getLocation();
         World world = evt.getPlayer().getWorld();
-        Vector pt = toVector(loc);
+        Vector pt = toVector(evt.getPlayer().getLocation());
         Region region = FFA.getRegion();
         if (region.contains(world, pt)) {
             evt.setCancelled(true);
-            evt.getPlayer().sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " STOP TRYING TO DUPE NOOB. <3 Shake");
+            evt.getPlayer().sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You are not allowed to drop items in this area.");
         }
     }
 
@@ -186,43 +180,17 @@ public class FFAPlayerListener implements Listener {
         if (!evt.isCancelled()) {
             Player evtPlayer = evt.getPlayer();
             World world = evtPlayer.getWorld();
-            Location locTo = evt.getTo();
-            Location locFrom = evt.getFrom();
             Region region = FFA.getRegion();
-            Vector tTo = toVector(locTo);
-            Vector tFrom = toVector(locFrom);
-            if (!region.contains(world, tTo) && region.contains(world, tFrom)) {
-                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerLeftArenaEvent(evtPlayer, tTo, tFrom, MoveMethod.TELEPORTED));
-            } else if (region.contains(world, tTo) && !region.contains(world, tFrom)) {
-                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerEnteredArenaEvent(evtPlayer, tTo, tFrom, MoveMethod.TELEPORTED));
-            } else if (region.contains(world, tTo) && locFrom == null) {
-                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerEnteredArenaEvent(evtPlayer, tTo, tFrom, MoveMethod.TELEPORTED));
-            }
-        }
-    }
-
-    @EventHandler(priority = EventPriority.LOW)
-    public void onInventoryEdit(InventoryClickEvent evt) {
-        HumanEntity HE = evt.getWhoClicked();
-        Player evtPlayer;
-        if (HE instanceof Player) {
-            evtPlayer = (Player) HE;
-            if (evtPlayer.getGameMode() == GameMode.CREATIVE) {
+            Vector tTo = toVector(evt.getTo());
+            Vector tFrom = toVector(evt.getPlayer().getLocation());
+            if (region.contains(world, tFrom)) {
+                evt.setCancelled(true);
                 return;
             }
-            if (evtPlayer != null) {
-                Location loc = evtPlayer.getLocation();
-                World world = evtPlayer.getWorld();
-                Vector pt = new Vector(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
-                Region region = FFA.getRegion();
-                if (region.contains(world, pt)) {
-                    evt.setResult(Event.Result.DENY);
-                    evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You cannot modify your inventory.");
-                }
-                if (FFA.hasActiveTimer(evtPlayer)) {
-                    evt.setResult(Event.Result.DENY);
-                    evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You cannot modify your inventory.");
-                }
+            if (region.contains(world, tTo)) {
+                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerEnteredArenaEvent(evtPlayer, null, tTo, MoveMethod.TELEPORTED));
+            } else if(region.contains(world, tFrom)) {
+                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerLeftArenaEvent(evtPlayer, null, tTo, MoveMethod.TELEPORTED));
             }
         }
     }
@@ -246,6 +214,10 @@ public class FFAPlayerListener implements Listener {
         Location loc = evtPlayer.getLocation();
         Vector pt = toVector(loc);
         Region region = FFA.getRegion();
+        if (FFA.isInTeleportQueue(evtPlayer)) {
+            FFA.removePlayerFromTeleportQueue(evtPlayer);
+            evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Teleport has been cancelled.");
+        }
         if (region.contains(world, pt)) {
             FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerQuitInArenaEvent(evtPlayer));
         }
@@ -256,25 +228,25 @@ public class FFAPlayerListener implements Listener {
         if (evt.isCancelled()) {
             return;
         }
-        if (evt.getEntity() instanceof Player) {
-            Player evtPlayer = (Player) evt.getEntity();
-            if (FFA.hasActiveTimer(evtPlayer)) {
-                FFA.getServer().getScheduler().cancelTask(FFA.getActiveTimer(evtPlayer));
-                FFA.removeTimer(evtPlayer);
-                evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Teleport has been cancelled.");
-                return;
-            }
-            Location loc = evtPlayer.getLocation();
-            World world = evtPlayer.getWorld();
-            Vector pt = toVector(loc);
-            Region region = FFA.getRegion();
-            if (region.contains(world, pt)) {
-                if (evt instanceof EntityDamageByEntityEvent) {
-                    EntityDamageByEntityEvent edee = (EntityDamageByEntityEvent) evt;
-                    FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerDamageInArenaEvent(evtPlayer, edee.getDamager(), evt.getCause(), evt));
-                } else {
-                    FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerDamageInArenaEvent(evtPlayer, null, evt.getCause(), evt));
-                }
+        if (!(evt.getEntity() instanceof Player)) {
+            return;
+        }
+        Player evtPlayer = (Player) evt.getEntity();
+        if (FFA.isInTeleportQueue(evtPlayer)) {
+            FFA.removePlayerFromTeleportQueue(evtPlayer);
+            evtPlayer.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Teleport has been cancelled.");
+            return;
+        }
+        Location loc = evtPlayer.getLocation();
+        World world = evtPlayer.getWorld();
+        Vector pt = toVector(loc);
+        Region region = FFA.getRegion();
+        if (region.contains(world, pt)) {
+            if (evt instanceof EntityDamageByEntityEvent) {
+                EntityDamageByEntityEvent edee = (EntityDamageByEntityEvent) evt;
+                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerDamageInArenaEvent(evtPlayer, edee.getDamager(), evt.getCause(), evt));
+            } else {
+                FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerDamageInArenaEvent(evtPlayer, null, evt.getCause(), evt));
             }
         }
     }
@@ -286,11 +258,10 @@ public class FFAPlayerListener implements Listener {
         }
         Player evtPlayer = evt.getPlayer();
         World world = evtPlayer.getWorld();
-        Location loc = evtPlayer.getLocation();
-        Vector pt = toVector(loc);
+        Vector pt = toVector(evtPlayer.getLocation());
         Region region = FFA.getRegion();
         if (!region.contains(world, pt)) {
-            FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerLeftArenaEvent(evtPlayer, null, pt, MoveMethod.JOINED));
+            FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerPreCheckEvent(evtPlayer));
         }
         if (region.contains(world, pt)) {
             FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerEnteredArenaEvent(evtPlayer, null, pt, MoveMethod.JOINED));

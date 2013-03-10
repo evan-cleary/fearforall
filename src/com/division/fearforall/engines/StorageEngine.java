@@ -1,17 +1,13 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.division.fearforall.engines;
 
 import com.division.common.utils.ItemArmor;
 import com.division.fearforall.core.FearForAll;
 import com.division.fearforall.core.PlayerStorage;
-import com.division.fearforall.crypto.SHA1;
 import com.division.fearforall.events.PlayerDamageInArenaEvent;
 import com.division.fearforall.events.PlayerEnteredArenaEvent;
 import com.division.fearforall.events.PlayerQuitInArenaEvent;
-import com.massivecraft.factions.struct.Relation;
+import com.tetra.combatprotector.CombatProtector;
+import com.tetra.combatprotector.handlers.MarkHandler;
 import java.util.ArrayList;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -27,7 +23,7 @@ import org.bukkit.potion.PotionEffectType;
  *
  */
 @EngineInfo(author = "mastershake71",
-version = "0.2.3EB",
+version = "0.2.4EB",
 depends = {"OfflineStorage"})
 public class StorageEngine extends Engine {
 
@@ -61,19 +57,27 @@ public class StorageEngine extends Engine {
     public void onPlayerDamagedInArena(PlayerDamageInArenaEvent evt) {
         Player victim = evt.getVictim();
         EntityDamageEvent ede = evt.getDamageEvent();
-        EntityDamageByEntityEvent edee = null;
+        EntityDamageByEntityEvent edee;
         if (ede instanceof EntityDamageByEntityEvent) {
             edee = (EntityDamageByEntityEvent) ede;
-            Player attacker = null;
+            Player attacker;
             if (edee.getDamager() instanceof Player) {
                 attacker = (Player) edee.getDamager();
                 getStorage(victim.getName()).setLastHit(attacker.getName());
                 if (!evt.getDamageEvent().isCancelled()) {
-                    Relation rel = FearForAll.getInstance().getRelationShip(victim, attacker);
-                    if (rel.isAtLeast(Relation.ALLY)) {
-                        attacker.damage(getArmorRedox(attacker, evt.getDamageEvent().getDamage()));
-                        evt.getDamageEvent().setCancelled(true);
+                    int damage = getArmorRedox(attacker, evt.getDamageEvent().getDamage());
+                    victim.damage(damage);
+                    MarkHandler handler = CombatProtector.instance.markHandlers.get(victim);
+                    if(handler.checkTagged(victim)){
+                        handler.refreshTimer(victim);
+                    } else{
+                        handler.safeOff(victim);
                     }
+                    CombatProtector.instance.getCombatLogger().AddEntry(victim, attacker, damage, CombatProtector.instance.cpel.checkWeapon(attacker));
+                    for(ItemStack item: victim.getInventory().getArmorContents()){
+                        item.setDurability((short)(item.getDurability()-3));
+                    }
+                    evt.getDamageEvent().setCancelled(true);
                 }
             }
         }
@@ -110,14 +114,13 @@ public class StorageEngine extends Engine {
     }
 
     public void addStorage(Player key) {
-        PlayerStorage pStorage = new PlayerStorage(SHA1.getHash(20, key.getName()), key.getInventory());
+        PlayerStorage pStorage = new PlayerStorage(key.getName(), key.getInventory());
         massStorage.add(pStorage);
     }
 
     public PlayerStorage getStorage(String rKey) {
-        String key = SHA1.getHash(20, rKey);
         for (PlayerStorage ps : massStorage) {
-            if (ps.getKey().equals(key)) {
+            if (ps.getKey().equals(rKey)) {
                 return ps;
             }
         }

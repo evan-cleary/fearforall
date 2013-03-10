@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.division.fearforall.engines;
 
 import com.division.common.utils.Numbers;
@@ -11,9 +7,6 @@ import com.division.fearforall.events.PlayerDeathInArenaEvent;
 import com.division.fearforall.events.PlayerDeathInArenaEvent.DeathCause;
 import com.division.fearforall.events.PlayerKilledPlayerInArenaEvent;
 import com.division.fearforall.events.PlayerKillstreakAwardedEvent;
-import com.massivecraft.factions.FPlayer;
-import com.massivecraft.factions.FPlayers;
-import com.massivecraft.factions.struct.Relation;
 import java.util.ArrayList;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -31,7 +24,7 @@ import org.bukkit.potion.PotionEffectType;
  * @author Evan
  */
 @EngineInfo(author = "mastershake71",
-version = "0.2.2DE",
+version = "0.2.23RB",
 depends = {"Storage", "Inventory"})
 public class KillStreakEngine extends Engine {
 
@@ -67,17 +60,9 @@ public class KillStreakEngine extends Engine {
 
     @EventHandler(priority = EventPriority.LOW)
     public void onPlayerKill(PlayerKilledPlayerInArenaEvent evt) {
-        FPlayer killer = FPlayers.i.get(evt.getKiller());
-        FPlayer victim = FPlayers.i.get(evt.getVictim());
-        Relation relation = killer.getRelationTo(victim);
-        if (relation.isAtMost(Relation.NEUTRAL)) {
-            int killstreak = addKill(evt.getKiller(), evt.getVictim());
-            rewardKillStreak(evt.getKiller());
-            FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerKillstreakAwardedEvent(evt.getKiller(), killstreak, new ArrayList<ItemStack>()));
-        } else {
-            evt.getKiller().sendMessage(ChatColor.YELLOW + "[FearForAll] " + ChatColor.RED + "You team killed " + evt.getVictim().getName());
-            evt.getVictim().sendMessage(ChatColor.YELLOW + "[FearForAll] " + ChatColor.RED + evt.getKiller().getName() + " team killed you.");
-        }
+        int killstreak = addKill(evt.getKiller(), evt.getVictim());
+        rewardKillStreak(evt.getKiller());
+        FearForAll.getInstance().getServer().getPluginManager().callEvent(new PlayerKillstreakAwardedEvent(evt.getKiller(), killstreak, new ArrayList<ItemStack>()));
     }
 
     @EventHandler(priority = EventPriority.LOW)
@@ -144,8 +129,8 @@ public class KillStreakEngine extends Engine {
         if (streakVal >= 1) {
             if (!Numbers.isDecimal(streakVal)) {
                 if (!pStorage.isRewarded(killStreak)) {
-                    FearForAll.getEcon().depositPlayer(p.getName(), streakVal * 250);
-                    p.sendMessage(ChatColor.YELLOW + "[FearForAll] " + ChatColor.RED + "You have been awarded $" + streakVal * 250);
+                    FearForAll.getEcon().depositPlayer(p.getName(), streakVal * 50);
+                    p.sendMessage(ChatColor.YELLOW + "[FearForAll] " + ChatColor.RED + "You have been awarded $" + streakVal * 50);
                     System.out.println("[FearForAll] Awarded " + p.getName() + " $" + streakVal * 250);
                     if (streakVal != 1) {
                         Bukkit.getServer().broadcastMessage(ChatColor.YELLOW + "[FearForAll] " + ChatColor.RED + p.getName() + " is on a " + killStreak + " Kill Streak! Type /ffa to stop him!");

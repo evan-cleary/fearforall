@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.division.fearforall.core;
 
 import com.division.common.utils.Builder;
@@ -13,14 +9,9 @@ import com.division.fearforall.mysql.MySQLc;
 import com.division.fearforall.regions.HealRegion;
 import com.division.fearforall.regions.Region;
 import com.division.fearforall.regions.Selection;
-import com.massivecraft.factions.FPlayer;
-import com.massivecraft.factions.FPlayers;
-import com.massivecraft.factions.struct.Relation;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
+import java.util.Map.Entry;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -41,13 +32,11 @@ public class FearForAll extends JavaPlugin {
     private Region region;
     private HealRegion healRegion;
     private static FFAConfig ffaconfig;
-    ArrayList<PlayerStorage> pStorage = new ArrayList<PlayerStorage>();
-    Map<Player, Integer> timerlist = new HashMap<Player, Integer>();
+    private Map<Player, Long> teleportQueue = new HashMap<Player, Long>();
     FFAPlayerListener ffapl;
     private DataInterface DB = null;
     private boolean usingDataBaseLeaderBoards = false;
     private static Economy econ;
-    boolean lockdown = false;
     private static FearForAll instance;
     private EngineManager engineManager = new EngineManager();
     private boolean isDebugMode = false;
@@ -107,6 +96,7 @@ public class FearForAll extends JavaPlugin {
             System.out.println("[FearForAll] unable to load vault.");
             getServer().getPluginManager().disablePlugin(this);
         }
+        this.getServer().getScheduler().scheduleSyncRepeatingTask(this, new Queue(), 30l, 30l);
         if (this.getDescription().getVersion().contains("EB")) {
             Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "[FearForAll] YOU ARE USING AN EXPERIMENTAL BUILD. USE AT YOUR OWN RISK.");
         }
@@ -129,145 +119,121 @@ public class FearForAll extends JavaPlugin {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String commandLabel, String[] args) {
-        if (!lockdown) {
-            Player player = null;
-            if (sender instanceof Player) {
-                player = (Player) sender;
-            }
-            if (command.getName().equalsIgnoreCase("ffa")) {
-                if (player != null) {
-                    if (args.length >= 1) {
-                        if (args[0].equalsIgnoreCase("define") && player.hasPermission(command.getPermission() + ".define")) {
-                            BlockVector p1 = Selection.getP1();
-                            BlockVector p2 = Selection.getP2();
-                            if (p1 != null && p2 != null) {
-                                ffaconfig.setRegion(player.getWorld(), p1, p2);
-                                region = ffaconfig.getRegion();
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Region has been defined.");
-                                return true;
-                            } else {
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You need to select both points");
-                                return true;
-                            }
-                        }
-                        if (args[0].equalsIgnoreCase("healregion") && player.hasPermission(command.getPermission() + ".healregion")) {
-                            BlockVector p1 = Selection.getP1();
-                            BlockVector p2 = Selection.getP2();
-                            if (p1 != null && p2 != null) {
-                                ffaconfig.setHealRegion(player.getWorld(), p1, p2);
-                                registerHealRegion(ffaconfig.getHealRegion());
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Heal region has been defined.");
-                                return true;
-                            } else {
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You need to select both points");
-                                return true;
-                            }
-                        }
-                        if (args[0].equalsIgnoreCase("setspawn") && player.hasPermission(command.getPermission() + ".setspawn")) {
-                            if (args.length == 2) {
-                                ffaconfig.setSpawn(args[1], player.getLocation());
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " spawn " + args[1] + " has been set");
-                                return true;
-                            } else {
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " incorrect number of args.");
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " /ffa setspawn [name]");
-                                return true;
-                            }
-                        }
-                        if (args[0].equalsIgnoreCase("reload") && player.hasPermission(command.getPermission() + ".reload")) {
-                            if (ffaconfig.getRegion() != null) {
-                                region = ffaconfig.getRegion();
-                                registerHealRegion(ffaconfig.getHealRegion());
-                                ffaconfig.load();
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " config reloaded.");
-                                return true;
-                            }
-                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Unable to load a valid region.");
+        Player player = null;
+        if (sender instanceof Player) {
+            player = (Player) sender;
+        }
+        if (command.getName().equalsIgnoreCase("ffa")) {
+            if (player != null) {
+                if (args.length >= 1) {
+                    if (args[0].equalsIgnoreCase("define") && player.hasPermission(command.getPermission() + ".define")) {
+                        BlockVector p1 = Selection.getP1();
+                        BlockVector p2 = Selection.getP2();
+                        if (p1 != null && p2 != null) {
+                            ffaconfig.setRegion(player.getWorld(), p1, p2);
+                            region = ffaconfig.getRegion();
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Region has been defined.");
+                            return true;
+                        } else {
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You need to select both points");
                             return true;
                         }
-                        if (args[0].equalsIgnoreCase("shutdown") && player.hasPermission(command.getPermission() + ".shutdown")) {
-                            getServer().getPluginManager().disablePlugin(this);
-                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " has been shut down.");
+                    }
+                    if (args[0].equalsIgnoreCase("healregion") && player.hasPermission(command.getPermission() + ".healregion")) {
+                        BlockVector p1 = Selection.getP1();
+                        BlockVector p2 = Selection.getP2();
+                        if (p1 != null && p2 != null) {
+                            ffaconfig.setHealRegion(player.getWorld(), p1, p2);
+                            registerHealRegion(ffaconfig.getHealRegion());
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Heal region has been defined.");
+                            return true;
+                        } else {
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " You need to select both points");
                             return true;
                         }
-                        if (args[0].equalsIgnoreCase("version")) {
-                            sender.sendMessage(ChatColor.YELLOW + "Name: " + ChatColor.RED + this.getDescription().getName());
-                            sender.sendMessage(ChatColor.YELLOW + "Description: " + ChatColor.RED + this.getDescription().getDescription());
-                            if (this.getDescription().getVersion().contains("EB")) {
-                                sender.sendMessage(ChatColor.YELLOW + "Version: " + ChatColor.RED + this.getDescription().getVersion() + ChatColor.YELLOW + " (" + ChatColor.DARK_RED + "Experimental" + ChatColor.YELLOW + ")");
-                            } else {
-                                sender.sendMessage(ChatColor.YELLOW + "Version: " + ChatColor.RED + this.getDescription().getVersion());
+                    }
+                    if (args[0].equalsIgnoreCase("setspawn") && player.hasPermission(command.getPermission() + ".setspawn")) {
+                        if (args.length == 2) {
+                            ffaconfig.setSpawn(args[1], player.getLocation());
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " spawn " + args[1] + " has been set");
+                            return true;
+                        } else {
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " incorrect number of args.");
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " /ffa setspawn [name]");
+                            return true;
+                        }
+                    }
+                    if (args[0].equalsIgnoreCase("reload") && player.hasPermission(command.getPermission() + ".reload")) {
+                        if (ffaconfig.getRegion() != null) {
+                            region = ffaconfig.getRegion();
+                            registerHealRegion(ffaconfig.getHealRegion());
+                            ffaconfig.load();
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " config reloaded.");
+                            return true;
+                        }
+                        sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Unable to load a valid region.");
+                        return true;
+                    }
+                    if (args[0].equalsIgnoreCase("shutdown") && player.hasPermission(command.getPermission() + ".shutdown")) {
+                        getServer().getPluginManager().disablePlugin(this);
+                        sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " has been shut down.");
+                        return true;
+                    }
+                    if (args[0].equalsIgnoreCase("version")) {
+                        sender.sendMessage(ChatColor.YELLOW + "Name: " + ChatColor.RED + this.getDescription().getName());
+                        sender.sendMessage(ChatColor.YELLOW + "Description: " + ChatColor.RED + this.getDescription().getDescription());
+                        if (this.getDescription().getVersion().contains("EB")) {
+                            sender.sendMessage(ChatColor.YELLOW + "Version: " + ChatColor.RED + this.getDescription().getVersion() + ChatColor.YELLOW + " (" + ChatColor.DARK_RED + "Experimental" + ChatColor.YELLOW + ")");
+                        } else {
+                            sender.sendMessage(ChatColor.YELLOW + "Version: " + ChatColor.RED + this.getDescription().getVersion());
+                        }
+                        sender.sendMessage(ChatColor.YELLOW + "Author: " + ChatColor.RED + this.getDescription().getAuthors().get(0));
+                        sender.sendMessage(ChatColor.YELLOW + "Engines: ");
+                        for (String engine : engineManager.getEngines()) {
+                            String msg = "   " + ChatColor.RED + engine + ChatColor.YELLOW + " - Version: " + ChatColor.RED + engineManager.getEngineVersion(engine) + ChatColor.YELLOW + " - Author: " + ChatColor.RED + engineManager.getEngineAuthor(engine);
+                            if (engineManager.getEngineVersion(engine).contains("EB")) {
+                                msg += ChatColor.YELLOW + " (" + ChatColor.DARK_RED + "Exp" + ChatColor.YELLOW + ")";
                             }
-                            sender.sendMessage(ChatColor.YELLOW + "Author: " + ChatColor.RED + this.getDescription().getAuthors().get(0));
-                            sender.sendMessage(ChatColor.YELLOW + "Engines: ");
-                            for (String engine : engineManager.getEngines()) {
-                                String msg = "   " + ChatColor.RED + engine + ChatColor.YELLOW + " - Version: " + ChatColor.RED + engineManager.getEngineVersion(engine) + ChatColor.YELLOW + " - Author: " + ChatColor.RED + engineManager.getEngineAuthor(engine);
-                                if (engineManager.getEngineVersion(engine).contains("EB")) {
-                                    msg += ChatColor.YELLOW + " (" + ChatColor.DARK_RED + "Exp" + ChatColor.YELLOW + ")";
-                                }
-                                sender.sendMessage(msg);
+                            sender.sendMessage(msg);
 
-                            }
-                            return true;
                         }
-                        if (args[0].equalsIgnoreCase("debug") && player.getName().equals("mastershake71")) {
-                            if (this.isDebugMode) {
-                                this.isDebugMode = false;
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Debug mode disabled.");
-                            } else {
-                                this.isDebugMode = true;
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Debug mode enabled.");
-                            }
-                            return true;
+                        return true;
+                    }
+                    if (args[0].equalsIgnoreCase("debug") && player.getName().equals("mastershake71")) {
+                        if (this.isDebugMode) {
+                            this.isDebugMode = false;
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Debug mode disabled.");
+                        } else {
+                            this.isDebugMode = true;
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Debug mode enabled.");
                         }
-                        if (args[0].equalsIgnoreCase("spawns") && player.hasPermission(command.getPermission() + ".spawns")) {
-                            sender.sendMessage(ChatColor.YELLOW + " Spawns: " + ChatColor.RED + Builder.buildString(ffaconfig.getSpawnNames()));
-                            return true;
-                        }
-                        if (args[0].equalsIgnoreCase("removespawn") && player.hasPermission(command.getPermission() + ".removespawn")) {
-                            if (args.length == 2) {
-                                if (ffaconfig.removeSpawn(args[1])) {
-                                    sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Spawn " + args[1] + " has been removed.");
-                                    return true;
-                                }
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Unable to find spawn " + args[1]);
-                                return true;
-                            } else {
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " incorrect number of args.");
-                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " /ffa removespawn [name]");
+                        return true;
+                    }
+                    if (args[0].equalsIgnoreCase("spawns") && player.hasPermission(command.getPermission() + ".spawns")) {
+                        sender.sendMessage(ChatColor.YELLOW + " Spawns: " + ChatColor.RED + Builder.buildString(ffaconfig.getSpawnNames()));
+                        return true;
+                    }
+                    if (args[0].equalsIgnoreCase("removespawn") && player.hasPermission(command.getPermission() + ".removespawn")) {
+                        if (args.length == 2) {
+                            if (ffaconfig.removeSpawn(args[1])) {
+                                sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Spawn " + args[1] + " has been removed.");
                                 return true;
                             }
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Unable to find spawn " + args[1]);
+                            return true;
+                        } else {
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " incorrect number of args.");
+                            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " /ffa removespawn [name]");
+                            return true;
                         }
-                        if (args[0].equalsIgnoreCase("top") && player.hasPermission(command.getPermission() + ".top")) {
-                            String dispFormat = ChatColor.DARK_AQUA + "{0}: " + ChatColor.RED + "{1}" + ChatColor.YELLOW + " ---- " + ChatColor.RED + " {2}";
-                            String titleFormat = (ChatColor.YELLOW + "---------==[" + ChatColor.GRAY + "FFA Top {0}" + ChatColor.YELLOW + "]==---------");
-                            String bottomFormat = ChatColor.YELLOW + "-----------==[" + ChatColor.GRAY + "FearPvP" + ChatColor.YELLOW + "]==-----------";
-                            int count = 1;
-                            if (args.length == 2) {
-                                if (args[1].equalsIgnoreCase("kills")) {
-                                    player.sendMessage(titleFormat.replace("{0}", "Kills"));
-                                    ArrayList<String> top_Kills = DB.getTopKills();
-                                    for (String name : top_Kills) {
-                                        int player_id = DB.getPlayerId(name);
-                                        int kill_count = DB.getKillCount(player_id);
-                                        player.sendMessage(dispFormat.replace("{0}", "" + count).replace("{2}", name).replace("{1}", "" + kill_count));
-                                        count++;
-                                    }
-                                    player.sendMessage(bottomFormat);
-                                }
-                                if (args[1].equalsIgnoreCase("streak")) {
-                                    player.sendMessage(titleFormat.replace("{0}", "KillStreak"));
-                                    ArrayList<String> top_Streaks = DB.getTopStreak();
-                                    for (String name : top_Streaks) {
-                                        int player_id = DB.getPlayerId(name);
-                                        int kill_streak = DB.getKillStreak(player_id);
-                                        player.sendMessage(dispFormat.replace("{0}", "" + count).replace("{2}", name).replace("{1}", "" + kill_streak));
-                                        count++;
-                                    }
-                                    player.sendMessage(bottomFormat);
-                                }
-                            }
-                            if (args.length == 1) {
+                    }
+                    if (args[0].equalsIgnoreCase("top") && player.hasPermission(command.getPermission() + ".top")) {
+                        String dispFormat = ChatColor.DARK_AQUA + "{0}: " + ChatColor.RED + "{1}" + ChatColor.YELLOW + " ---- " + ChatColor.RED + " {2}";
+                        String titleFormat = (ChatColor.YELLOW + "---------==[" + ChatColor.GRAY + "FFA Top {0}" + ChatColor.YELLOW + "]==---------");
+                        String bottomFormat = ChatColor.YELLOW + "-----------==[" + ChatColor.GRAY + "FearPvP" + ChatColor.YELLOW + "]==-----------";
+                        int count = 1;
+                        if (args.length == 2) {
+                            if (args[1].equalsIgnoreCase("kills")) {
                                 player.sendMessage(titleFormat.replace("{0}", "Kills"));
                                 ArrayList<String> top_Kills = DB.getTopKills();
                                 for (String name : top_Kills) {
@@ -278,37 +244,42 @@ public class FearForAll extends JavaPlugin {
                                 }
                                 player.sendMessage(bottomFormat);
                             }
-                            if (args.length > 2) {
-                                player.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Invalid number of arguements.");
-                                player.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " /ffa top <kills;streak>");
-                            }
-                            return true;
-                        }
-                        if (args[0].equalsIgnoreCase("stats")) {
-                            String titleFormat = (ChatColor.YELLOW + "---------==[" + ChatColor.GRAY + "{0}'s Stats" + ChatColor.YELLOW + "]==---------");
-                            String dispFormat = ChatColor.RED + "{0} " + ChatColor.YELLOW + ":" + ChatColor.RED + " {1}";
-                            String bottomFormat = ChatColor.YELLOW + "-----------==[" + ChatColor.GRAY + "FearPvP" + ChatColor.YELLOW + "]==-----------";
-                            if (args.length == 2) {
-                                int player_id = DB.getPlayerId(args[1]);
-                                if (player_id != 0) {
-                                    double kills = DB.getKillCount(player_id);
-                                    int killstreak = DB.getKillStreak(player_id);
-                                    double deaths = DB.getDeathCount(player_id);
-                                    double kdr = 0;
-                                    if (deaths > 0) {
-                                        kdr = roundTwoDecimals(kills / deaths);
-                                    }
-                                    player.sendMessage(titleFormat.replace("{0}", args[1]));
-                                    player.sendMessage(dispFormat.replace("{0}", "Kills").replace("{1}", "" + kills));
-                                    player.sendMessage(dispFormat.replace("{0}", "Streak").replace("{1}", "" + killstreak));
-                                    player.sendMessage(dispFormat.replace("{0}", "Deaths").replace("{1}", "" + deaths));
-                                    player.sendMessage(dispFormat.replace("{0}", "K/D Ratio").replace("{1}", "" + kdr));
-                                    player.sendMessage(bottomFormat);
-                                } else {
-                                    player.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Unable to find player.");
+                            if (args[1].equalsIgnoreCase("streak")) {
+                                player.sendMessage(titleFormat.replace("{0}", "KillStreak"));
+                                ArrayList<String> top_Streaks = DB.getTopStreak();
+                                for (String name : top_Streaks) {
+                                    int player_id = DB.getPlayerId(name);
+                                    int kill_streak = DB.getKillStreak(player_id);
+                                    player.sendMessage(dispFormat.replace("{0}", "" + count).replace("{2}", name).replace("{1}", "" + kill_streak));
+                                    count++;
                                 }
-                            } else if (args.length == 1) {
-                                int player_id = DB.getPlayerId(player.getName());
+                                player.sendMessage(bottomFormat);
+                            }
+                        }
+                        if (args.length == 1) {
+                            player.sendMessage(titleFormat.replace("{0}", "Kills"));
+                            ArrayList<String> top_Kills = DB.getTopKills();
+                            for (String name : top_Kills) {
+                                int player_id = DB.getPlayerId(name);
+                                int kill_count = DB.getKillCount(player_id);
+                                player.sendMessage(dispFormat.replace("{0}", "" + count).replace("{2}", name).replace("{1}", "" + kill_count));
+                                count++;
+                            }
+                            player.sendMessage(bottomFormat);
+                        }
+                        if (args.length > 2) {
+                            player.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Invalid number of arguements.");
+                            player.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " /ffa top <kills;streak>");
+                        }
+                        return true;
+                    }
+                    if (args[0].equalsIgnoreCase("stats")) {
+                        String titleFormat = (ChatColor.YELLOW + "---------==[" + ChatColor.GRAY + "{0}'s Stats" + ChatColor.YELLOW + "]==---------");
+                        String dispFormat = ChatColor.RED + "{0} " + ChatColor.YELLOW + ":" + ChatColor.RED + " {1}";
+                        String bottomFormat = ChatColor.YELLOW + "-----------==[" + ChatColor.GRAY + "FearPvP" + ChatColor.YELLOW + "]==-----------";
+                        if (args.length == 2) {
+                            int player_id = DB.getPlayerId(args[1]);
+                            if (player_id != 0) {
                                 double kills = DB.getKillCount(player_id);
                                 int killstreak = DB.getKillStreak(player_id);
                                 double deaths = DB.getDeathCount(player_id);
@@ -316,45 +287,54 @@ public class FearForAll extends JavaPlugin {
                                 if (deaths > 0) {
                                     kdr = roundTwoDecimals(kills / deaths);
                                 }
-                                player.sendMessage(titleFormat.replace("{0}", player.getName()));
+                                player.sendMessage(titleFormat.replace("{0}", args[1]));
                                 player.sendMessage(dispFormat.replace("{0}", "Kills").replace("{1}", "" + kills));
                                 player.sendMessage(dispFormat.replace("{0}", "Streak").replace("{1}", "" + killstreak));
                                 player.sendMessage(dispFormat.replace("{0}", "Deaths").replace("{1}", "" + deaths));
                                 player.sendMessage(dispFormat.replace("{0}", "K/D Ratio").replace("{1}", "" + kdr));
                                 player.sendMessage(bottomFormat);
+                            } else {
+                                player.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Unable to find player.");
                             }
-                            return true;
+                        } else if (args.length == 1) {
+                            int player_id = DB.getPlayerId(player.getName());
+                            double kills = DB.getKillCount(player_id);
+                            int killstreak = DB.getKillStreak(player_id);
+                            double deaths = DB.getDeathCount(player_id);
+                            double kdr = 0;
+                            if (deaths > 0) {
+                                kdr = roundTwoDecimals(kills / deaths);
+                            }
+                            player.sendMessage(titleFormat.replace("{0}", player.getName()));
+                            player.sendMessage(dispFormat.replace("{0}", "Kills").replace("{1}", "" + kills));
+                            player.sendMessage(dispFormat.replace("{0}", "Streak").replace("{1}", "" + killstreak));
+                            player.sendMessage(dispFormat.replace("{0}", "Deaths").replace("{1}", "" + deaths));
+                            player.sendMessage(dispFormat.replace("{0}", "K/D Ratio").replace("{1}", "" + kdr));
+                            player.sendMessage(bottomFormat);
                         }
-                    } else {
-                        final Player fp = player;
-                        final int timer = getServer().getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
-
-                            @Override
-                            public void run() {
-                                randomTeleport(fp);
-                                removeTimer(fp);
-                            }
-                        }, 100L);
-                        addTimer(fp, timer);
-                        sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Teleporting to arena. Please wait 5 seconds.");
                         return true;
                     }
                 } else {
-                    sender.sendMessage("[FearForAll] requires a player.");
+                    final Player fp = player;
+                    if(isInTeleportQueue(fp)){
+                        removePlayerFromTeleportQueue(fp);
+                    }
+                    addPlayerToTeleportQueue(fp);
+                    sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Teleporting to arena. Please wait 5 seconds.");
                     return true;
                 }
+            } else {
+                sender.sendMessage("[FearForAll] requires a player.");
+                return true;
             }
-            sender.sendMessage(ChatColor.YELLOW + "---------==[" + ChatColor.GRAY + "FearForAll Help" + ChatColor.YELLOW + "]==---------");
-            sender.sendMessage(ChatColor.YELLOW + "  /ffa define" + ChatColor.DARK_AQUA + " --- " + ChatColor.GOLD + " Defines the ffa arena.");
-            sender.sendMessage(ChatColor.YELLOW + "  /ffa top [kills;streak]" + ChatColor.DARK_AQUA + " --- " + ChatColor.GOLD + " Displays top 10 in category.");
-            sender.sendMessage(ChatColor.YELLOW + "  /ffa stats [playername]" + ChatColor.DARK_AQUA + " --- " + ChatColor.GOLD + " Displays player stats.");
-            sender.sendMessage(ChatColor.YELLOW + "  /ffa version" + ChatColor.DARK_AQUA + " --- " + ChatColor.GOLD + " Displays FFA version.");
-            sender.sendMessage(ChatColor.YELLOW + "-------------==[" + ChatColor.GRAY + "FearPvP" + ChatColor.YELLOW + "]==------------");
-            return true;
-        } else {
-            sender.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " is in safe shutdown mode.");
-            return true;
         }
+        sender.sendMessage(ChatColor.YELLOW + "---------==[" + ChatColor.GRAY + "FearForAll Help" + ChatColor.YELLOW + "]==---------");
+        sender.sendMessage(ChatColor.YELLOW + "  /ffa define" + ChatColor.DARK_AQUA + " --- " + ChatColor.GOLD + " Defines the ffa arena.");
+        sender.sendMessage(ChatColor.YELLOW + "  /ffa top [kills;streak]" + ChatColor.DARK_AQUA + " --- " + ChatColor.GOLD + " Displays top 10 in category.");
+        sender.sendMessage(ChatColor.YELLOW + "  /ffa stats [playername]" + ChatColor.DARK_AQUA + " --- " + ChatColor.GOLD + " Displays player stats.");
+        sender.sendMessage(ChatColor.YELLOW + "  /ffa version" + ChatColor.DARK_AQUA + " --- " + ChatColor.GOLD + " Displays FFA version.");
+        sender.sendMessage(ChatColor.YELLOW + "-------------==[" + ChatColor.GRAY + "FearPvP" + ChatColor.YELLOW + "]==------------");
+        return true;
     }
 
     public void registerHealRegion(HealRegion healRegion) {
@@ -387,36 +367,24 @@ public class FearForAll extends JavaPlugin {
         ArrayList<Location> spawns = ffaconfig.getSpawns();
         Random num = new Random();
         if (spawns.size() >= 1) {
+            p.closeInventory();
             p.teleport(spawns.get(num.nextInt(spawns.size())));
         } else {
             p.sendMessage(ChatColor.YELLOW + "[FearForAll] " + ChatColor.RED + "Unable to find defined spawn points.");
         }
     }
 
-    public Map<Player, Integer> getTimers() {
-        return timerlist;
+    public boolean isInTeleportQueue(Player p) {
+        return teleportQueue.containsKey(p);
+
     }
 
-    public boolean hasActiveTimer(Player p) {
-        if (timerlist.get(p) != null) {
-            return true;
-        }
-        return false;
+    public void addPlayerToTeleportQueue(Player p) {
+        teleportQueue.put(p, System.currentTimeMillis() + 5000);
     }
 
-    public void addTimer(Player p, int timer) {
-        timerlist.put(p, timer);
-    }
-
-    public void removeTimer(Player p) {
-        timerlist.remove(p);
-    }
-
-    public int getActiveTimer(Player p) {
-        if (hasActiveTimer(p)) {
-            return timerlist.get(p);
-        }
-        return -1;
+    public void removePlayerFromTeleportQueue(Player p) {
+        teleportQueue.remove(p);
     }
 
     public static Economy getEcon() {
@@ -457,9 +425,17 @@ public class FearForAll extends JavaPlugin {
         return this.isDebugMode;
     }
 
-    public Relation getRelationShip(Player p1, Player p2) {
-        FPlayer fp1 = FPlayers.i.get(p1);
-        FPlayer fp2 = FPlayers.i.get(p2);
-        return fp1.getRelationTo(fp2);
+    public class Queue implements Runnable {
+
+        @Override
+        public void run() {
+            Set<Entry<Player, Long>> entryList = teleportQueue.entrySet();
+            for (Entry<Player, Long> ent : entryList) {
+                if (ent.getValue() < System.currentTimeMillis()) {
+                    randomTeleport(ent.getKey());
+                    teleportQueue.remove(ent.getKey());
+                }
+            }
+        }
     }
 }

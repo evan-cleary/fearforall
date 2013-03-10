@@ -1,13 +1,8 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.division.fearforall.engines;
 
 import com.division.common.utils.Extractor;
 import com.division.fearforall.core.FearForAll;
 import com.division.fearforall.core.PlayerStorage;
-import com.division.fearforall.crypto.SHA1;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -25,7 +20,7 @@ import org.bukkit.inventory.PlayerInventory;
  * @author Evan
  */
 @EngineInfo(author = "mastershake71",
-version = "0.2.33RB")
+version = "0.2.39RB")
 public class OfflineStorageEngine extends Engine {
 
     FearForAll FFA;
@@ -42,10 +37,7 @@ public class OfflineStorageEngine extends Engine {
 
     public boolean hasOfflineStorage(String key) {
         File storagefile = new File(storagedir + "/" + key + ".yml");
-        if (storagefile.exists()) {
-            return true;
-        }
-        return false;
+        return storagefile.exists();
     }
 
     private int incrementItem(String item, String storage) {
@@ -130,8 +122,7 @@ public class OfflineStorageEngine extends Engine {
         return true;
     }
 
-    public boolean loadOfflineStorage(Player player) {
-        String key = SHA1.getHash(20, player.getName());
+    public boolean loadOfflineStorage(Player player, String key) {
         if (hasOfflineStorage(key)) {
             File storagefile = new File(storagedir + "/" + key + ".yml");
             YamlConfiguration offstor = new YamlConfiguration();

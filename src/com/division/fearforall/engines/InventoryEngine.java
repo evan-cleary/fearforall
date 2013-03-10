@@ -1,16 +1,8 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.division.fearforall.engines;
 
 import com.division.fearforall.core.FearForAll;
 import com.division.fearforall.core.PlayerStorage;
-import com.division.fearforall.crypto.SHA1;
-import com.division.fearforall.events.MoveMethod;
-import com.division.fearforall.events.PlayerEnteredArenaEvent;
-import com.division.fearforall.events.PlayerKillstreakAwardedEvent;
-import com.division.fearforall.events.PlayerLeftArenaEvent;
+import com.division.fearforall.events.*;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -25,7 +17,7 @@ import org.bukkit.potion.PotionEffect;
  * @author Evan
  */
 @EngineInfo(author = "mastershake71",
-version = "0.2.3EB",
+version = "0.2.31RB",
 depends = {"OfflineStorage", "Storage"})
 public class InventoryEngine extends Engine {
 
@@ -71,6 +63,14 @@ public class InventoryEngine extends Engine {
             }
         }
     }
+    
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onPlayerPreCheck(PlayerPreCheckEvent evt){
+        Player evtPlayer = evt.getPlayer();
+        if(OSE.hasOfflineStorage(evtPlayer.getName())){
+            restoreInventory(evtPlayer);
+        }
+    }
 
     @EventHandler(priority = EventPriority.NORMAL)
     public void onPlayerLeftArena(PlayerLeftArenaEvent evt) {
@@ -93,21 +93,20 @@ public class InventoryEngine extends Engine {
         pInv.addItem(new ItemStack(Material.IRON_AXE, 1));
     }
 
-    public boolean restoreInventory(Player key) {
-        String sKey = SHA1.getHash(20, key.getName());
-        if (OSE.hasOfflineStorage(sKey)) {
-            OSE.loadOfflineStorage(key);
-            if (SE.hasStorage(key)) {
-                PlayerStorage pStorage = SE.getStorage(key.getName());
+    public boolean restoreInventory(Player player) {
+        if (OSE.hasOfflineStorage(player.getName())) {
+            OSE.loadOfflineStorage(player,player.getName());
+            if (SE.hasStorage(player)) {
+                PlayerStorage pStorage = SE.getStorage(player.getName());
                 SE.removeStorage(pStorage);
             }
             return true;
         }
-        PlayerStorage pStorage = SE.getStorage(key.getName());
+        PlayerStorage pStorage = SE.getStorage(player.getName());
         if (pStorage != null) {
-            pStorage.restoreInv(key);
+            pStorage.restoreInv(player);
             SE.removeStorage(pStorage);
-            key.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Your inventory has been restored.");
+            player.sendMessage(ChatColor.YELLOW + "[FearForAll]" + ChatColor.RED + " Your inventory has been restored.");
             return true;
         }
         return false;

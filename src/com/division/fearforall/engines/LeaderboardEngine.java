@@ -1,13 +1,12 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.division.fearforall.engines;
 
 import com.division.fearforall.core.FearForAll;
-import com.division.fearforall.crypto.SHA1;
-import com.division.fearforall.events.*;
+import com.division.fearforall.core.PlayerStorage;
+import com.division.fearforall.events.PlayerDeathInArenaEvent;
 import com.division.fearforall.events.PlayerDeathInArenaEvent.DeathCause;
+import com.division.fearforall.events.PlayerEnteredArenaEvent;
+import com.division.fearforall.events.PlayerKilledPlayerInArenaEvent;
+import com.division.fearforall.events.PlayerKillstreakAwardedEvent;
 import com.division.fearforall.mysql.DataInterface;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -59,10 +58,12 @@ public class LeaderboardEngine extends Engine {
     public void onPlayerDeathInArena(PlayerDeathInArenaEvent evt) {
         Player victim = evt.getVictim();
         if (evt.getCause() == DeathCause.ENVIRONMENT) {
-            String rKey = SHA1.getHash(20, victim.getName());
-            String lastAttacker = SE.getStorage(rKey).getLastHit();
-            DB.incrementKillCount(lastAttacker);
-            DB.incrementDeathCount(victim.getName());
+            PlayerStorage storage = SE.getStorage(victim.getName());
+            if (storage != null) {
+                String lastAttacker = storage.getLastHit();
+                DB.incrementKillCount(lastAttacker);
+                DB.incrementDeathCount(victim.getName());
+            }
         }
     }
 
